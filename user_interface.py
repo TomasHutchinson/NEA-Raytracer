@@ -55,15 +55,23 @@ class FileBox(ctk.CTkScrollableFrame):
                 checked_checkboxes.append(checkbox.cget("text"))
         return checked_checkboxes
 
-class RenderPreview(ctk.CTkFrame):
-    image = ctk.CTkImage
-    image_label = ctk.CTkLabel
+class RenderPreview(ctk.CTkLabel):
+    image = Image
     def __init__(self, master, img, **kwargs):
-        super().__init__(master, **kwargs)
         self.image = img
-        self.image_label = ctk.CTkLabel(self, image = self.image, text="")
+        
+        super().__init__(master, **kwargs, image=ctk.CTkImage(self.image, size=(640,480)), text="")
+        # self.bind("<Configure>", self._resize_image)
+    
+    def _resize_image(self,event):
+        new_width = self.winfo_width()
+        new_height = self.winfo_height()
+        self.configure(image=ctk.CTkImage(self.image, size=(new_width,new_height)))
 
-        self.image_label.grid()
+    def _update(self, master, img, **kwargs):
+        img.size = (self.winfo_width(), self.winfo_height())
+        self.image = img
+        super().__init__(master, **kwargs, image=self.image, text="")
 
 class PropertyEditor(ctk.CTkScrollableFrame):
     def __init__(self, master, title, values):
@@ -107,9 +115,9 @@ class Root(ctk.CTk):
         self.filebox = FileBox(self, title="FileSystem", values=values)
         self.filebox.grid(row=1, column=0, padx=1, pady=(10, 0), sticky="nsw")
 
-        tmpimage = ctk.CTkImage(dark_image=Image.open("C:\\Users\\TPSHu\\Downloads\\IMG_4142.png"), size=(640,480))
+        tmpimage = Image.open("C:\\Users\\TPSHu\\Downloads\\IMG_4142.png")
         self.render_preview = RenderPreview(self, tmpimage)
-        self.render_preview.grid(row=0, column=1, padx=10, pady=10, sticky="nsw")
-
+        self.render_preview.grid(row=0, column=1, padx=10, pady=10, sticky="nswe")
+    
         
 
