@@ -1,10 +1,16 @@
-import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 print("Hello World")
 
-root = tk.Tk()
-frm = ttk.Frame(root, padding=10)
-frm.grid()
-ttk.Label(frm, text="Hello World!").grid(column=0, row=0)
-ttk.Button(frm, text="Quit", command=root.destroy).grid(column=0, row=1)
-root.mainloop()
+ctk.set_appearance_mode("dark")# Modes: system (default), light, dark
+ctk.set_default_color_theme("dark-blue")  # Themes: blue (default), dark-blue, green
+
+root = ctk.CTk()
+
+def button_callback():
+    print("button pressed")
+
+button = ctk.CTkButton(root, text="my button", command=button_callback)
+button.grid(row=0, column=0, padx=20, pady=20)
+
+while 1:
+    root.update()
