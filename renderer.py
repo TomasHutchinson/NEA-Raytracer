@@ -37,7 +37,7 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
     return frame
 
 def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarray:
-    fov_adjustment = np.tan(np.radians(fov) / 2)
+    fov_adjustment = np.tan((fov * np.pi) /180  / 2)
     x = (2 * uv[0] - 1) * aspect_ratio * fov_adjustment
     y = (1 - 2 * uv[1]) * fov_adjustment
     direction = np.array([x, y, -1])
@@ -51,7 +51,7 @@ def pixel(u,v):
     np.array([0, 0.5, -1])       # Top
     ])))
 
-    ro = np.array([0.5,0,5])
+    ro = np.array([0.5, 0, 2])
     intersection = t.intersect(ro, rd)
 
     if np.linalg.norm(intersection[0]) < 100:
