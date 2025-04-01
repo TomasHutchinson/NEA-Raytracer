@@ -24,6 +24,7 @@ class SceneTreeFrame(ctk.CTkScrollableFrame):
         return checked_checkboxes
 
 class BottomTabs(ctk.CTkTabview):
+    console_lines = ["Hahaha funny text innit", "This is another entry yeah woohoo"]
     def __init__(self, master, render_frame, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -41,11 +42,25 @@ class BottomTabs(ctk.CTkTabview):
         self.render_button.grid(row=1, column=0)
 
         ### Console ###
-        self.label = ctk.CTkLabel(master=self.tab("Console"), text="Imagine console-y stuff here")
-        self.label.grid(row=0, column=0, padx=20, pady=10)
+        self.console_bg = ctk.CTkScrollableFrame(master=self.tab("Console"), height=self.tab("Render Details").winfo_height())
+        self.console_bg.grid(row=0, column=0, padx=20, pady=10, sticky="ew")
+
+        self.tab("Console").grid_columnconfigure(0, weight=1)
+        self.console_bg.grid_columnconfigure(0, weight=1)
+        self.tab("Console").grid_rowconfigure((0, 0), weight=0)
+
+        self.console_text = ctk.CTkLabel(master=self.console_bg, text="", justify="left")
+        self.console_text.grid(row=0, column=0, sticky="w")
+        self.update_console()
     
     def on_render_pressed(self):
         self.render_frame._render()
+    
+    def update_console(self):
+        nt = ""
+        for l in self.console_lines: nt = nt + l + "\n"
+        self.console_text.configure(text=nt)
+    
 
 class FileBox(ctk.CTkScrollableFrame):
     def __init__(self, master, title, values):
@@ -83,6 +98,7 @@ class RenderPreview(ctk.CTkLabel):
         new_width = self.winfo_width()
         new_height = self.winfo_height()
         render_scale = 0.25
+        
         self.image = renderer.render((int(new_width * render_scale), int(new_height * render_scale)))
         self.configure(image=ctk.CTkImage(self.image, size=(new_width,new_height)))
 

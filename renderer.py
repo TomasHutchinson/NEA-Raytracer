@@ -5,6 +5,7 @@ import numpy as np
 #custom
 import primitives
 
+
 def process_chunk(x_start, x_end, y_start, y_end, resolution):
     chunk = np.zeros((y_end - y_start, x_end - x_start, 3), dtype=np.uint8)
     for x in range(x_start, x_end):
@@ -32,8 +33,9 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
             print(f"Chunk: {i}, {j}")
             image_array[y_start:y_start + chunk.shape[0], x_start:x_start + chunk.shape[1]] = chunk
     
-    frame = Image.fromarray(image_array, mode='RGB')
     print(f"Time Taken: {time.process_time() - starttime}")
+    frame = Image.fromarray(image_array, mode='RGB')
+    print(f"Time Taken + image: {time.process_time() - starttime}")
     return frame
 
 def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarray:
@@ -51,9 +53,11 @@ def pixel(u,v):
     np.array([0, 0.5, -1])       # Top
     ])))
 
+    light = np.array([1,1,1])
+
     ro = np.array([0.5, 0, 2])
     intersection = t.intersect(ro, rd)
 
     if np.linalg.norm(intersection[0]) < 100:
-        return (1,0,0)
+        return np.multiply((1,0,0), np.dot(intersection[1], light))
     return (u,v,1)
