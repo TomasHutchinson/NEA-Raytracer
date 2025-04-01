@@ -2,6 +2,9 @@ from PIL import Image
 import time
 import numpy as np
 
+#custom
+import primitives
+
 def process_chunk(x_start, x_end, y_start, y_end, resolution):
     chunk = np.zeros((y_end - y_start, x_end - x_start, 3), dtype=np.uint8)
     for x in range(x_start, x_end):
@@ -26,15 +29,31 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
             y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
             
             x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution)
+            print(f"Chunk: {i}, {j}")
             image_array[y_start:y_start + chunk.shape[0], x_start:x_start + chunk.shape[1]] = chunk
     
     frame = Image.fromarray(image_array, mode='RGB')
     print(f"Time Taken: {time.process_time() - starttime}")
     return frame
 
+def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarray:
+    fov_adjustment = np.tan(np.radians(fov) / 2)
+    x = (2 * uv[0] - 1) * aspect_ratio * fov_adjustment
+    y = (1 - 2 * uv[1]) * fov_adjustment
+    direction = np.array([x, y, -1])
+    return np.divide(direction, np.linalg.norm(direction))
 
 def pixel(u,v):
-    blah = 0
-    for i in range(1000):
-        blah += 1
+    rd = get_ray_direction(np.array([u,v]), 90, 1.77)
+    t = primitives.Triangle(np.ndarray(shape=(3,3),buffer=np.array([
+    np.array([-0.5, -0.5, -1]),  # Bottom-left
+    np.array([0.5, -0.5, -1]),   # Bottom-right
+    np.array([0, 0.5, -1])       # Top
+    ])))
+
+    ro = np.array([0.5,0,5])
+    intersection = t.intersect(ro, rd)
+
+    if np.linalg.norm(intersection[0]) < 100:
+        return (1,0,0)
     return (u,v,1)
