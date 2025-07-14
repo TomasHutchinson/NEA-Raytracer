@@ -4,17 +4,42 @@ import primitives
 
 class mesh:
     triangles = []
+    aabb = []
 
     def __init__(self, filepath = ""):
         if filepath != "":
             self.load(filepath)
 
-    def intersect(self, ro : np.ndarray, rd : np.ndarray) -> np.ndarray:
+    def intersect(self, ro: np.ndarray, rd: np.ndarray) -> np.ndarray:
+        if not self._intersects_aabb(ro, rd):
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # Misses AABB
+
         intersections = []
         for tri in self.triangles:
-            intersections.append(tri.intersect(ro, rd))
-        return intersections[0]
+            hit = tri.intersect(ro, rd)
+            if hit is not None:
+                intersections.append(hit)
+
+        if intersections:
+            # Return closest intersection (by t or distance)
+            intersections.sort(key=lambda x: np.linalg.norm(x[0] - ro))
+            return intersections[0]
+        else:
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # No triangle hit
     
+    def _intersects_aabb(self, ro: np.ndarray, rd: np.ndarray) -> bool:
+        inv_dir = 1.0 / rd
+        tmin = (self.aabb[0] - ro) * inv_dir
+        tmax = (self.aabb[1] - ro) * inv_dir
+
+        t1 = np.minimum(tmin, tmax)
+        t2 = np.maximum(tmin, tmax)
+
+        t_near = np.max(t1)
+        t_far = np.min(t2)
+
+        return t_far >= t_near and t_far >= 0
+
     def load(self, filepath):
         vertices = []
         normals = []
@@ -40,23 +65,20 @@ class mesh:
                         face.append((v_idx, n_idx))
                     faces.append(face)
 
-        # Extract the vertices and normals from the face indices
-        vertex_arrays = []
-        normal_arrays = []
-
-        for face in faces:
-            v_arr = []
-            n_arr = []
-            for v_idx, n_idx in face:
-                v_arr.append(vertices[v_idx])
-                if n_idx is not None:
-                    n_arr.append(normals[n_idx])
-            vertex_arrays.append(np.array(v_arr, dtype=np.float32))
-            if n_arr:
-                normal_arrays.append(np.array(n_arr, dtype=np.float32))
-        
         tris = []
-        for i in range(0, len(vertex_arrays),3):
-            tris.append(primitives.Triangle(vertex_arrays[i], vertex_arrays[i+1], vertex_arrays[i+2]))
+        for face in faces:
+            if len(face) != 3:
+                continue  # Skip non-triangular faces or triangulate here if needed
 
+            v0 = np.array(vertices[face[0][0]], dtype=np.float32)
+            v1 = np.array(vertices[face[1][0]], dtype=np.float32)
+            v2 = np.array(vertices[face[2][0]], dtype=np.float32)
+
+            tris.append(primitives.Triangle((v0, v1, v2)))
+        
+        all_vertices_np = np.array(vertices)
+        min_corner = np.min(all_vertices_np, axis=0)
+        max_corner = np.max(all_vertices_np, axis=0)
+
+        self.aabb = (min_corner, max_corner)
         self.triangles = tris

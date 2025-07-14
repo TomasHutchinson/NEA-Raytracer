@@ -20,7 +20,9 @@ def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
 def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
     starttime = time.process_time()
 
+    print("Start render")
     scene = scn.scene
+    print("Loaded Scene")
     
     x_chunk_size = resolution[0] // num_x_chunks
     y_chunk_size = resolution[1] // num_y_chunks
@@ -35,7 +37,6 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
             y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
             
             x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution, scene)
-            print(f"Chunk: {i}, {j}")
             console.console.out(f"Chunk: {i}, {j}")
             image_array[y_start:y_start + chunk.shape[0], x_start:x_start + chunk.shape[1]] = chunk
     
@@ -54,17 +55,17 @@ def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarr
 def pixel(u,v, scene):
     rd = get_ray_direction(np.array([u,v]), 90, 1.77)
     t = primitives.Triangle(np.ndarray(shape=(3,3),buffer=np.array([
-    np.array([-0.5, -0.5, -1]),  # Bottom-left
-    np.array([0.5, -0.5, -1]),   # Bottom-right
+    np.array([-0.5, -0.5, -1]),  # Bottom left
+    np.array([0.5, -0.5, -1]),   # Bottom right
     np.array([0, 0.5, -1])       # Top
     ])))
 
     light = np.array([1,0.5,0.5])
 
-    ro = np.array([0.5, 0, 2])
+    ro = np.array([0, 0, 5])
 
     intersection = scene.objects[0].intersect(ro, rd)
 
-    if np.linalg.norm(intersection[0]) < 100:
+    if np.linalg.norm(intersection[0]) < 1000:
         return np.multiply((1,0,0), np.dot(intersection[1], light))
     return (u,v,1)
