@@ -3,6 +3,7 @@ from PIL import Image
 
 #custom stuff
 import renderer
+import console
 
 class SceneTreeFrame(ctk.CTkScrollableFrame):
     def __init__(self, master, title, values):
@@ -24,7 +25,8 @@ class SceneTreeFrame(ctk.CTkScrollableFrame):
         return checked_checkboxes
 
 class BottomTabs(ctk.CTkTabview):
-    console_lines = ["Hahaha funny text innit", "This is another entry yeah woohoo"]
+    # console_lines = ["Hahaha funny text innit", "This is another entry yeah woohoo"]
+    console_lines = console.console.buffer
     def __init__(self, master, render_frame, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -57,9 +59,11 @@ class BottomTabs(ctk.CTkTabview):
         self.render_frame._render()
     
     def update_console(self):
+        self.console_lines = console.console.buffer
         nt = ""
         for l in self.console_lines: nt = nt + l + "\n"
         self.console_text.configure(text=nt)
+        
     
 
 class FileBox(ctk.CTkScrollableFrame):
@@ -136,19 +140,21 @@ class Root(ctk.CTk):
         super().__init__()
 
         self.title("Get Raytraced")
-        self.geometry("1280x720")
+        self.geometry("1280x720")#Determines the window dimension
+        
+        #Determine weights for the UI grid packing
         self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure((0, 1), weight=1)
 
 
-
+        #Initialize the render preview
         tmpimage = Image.new('RGB', size=(1,1))
         self.render_preview = RenderPreview(self, tmpimage)
         self.render_preview.grid(row=0, column=1, padx=10, pady=10, sticky="nswe")
 
 
-
+        #Temporary basic UI elements
         values = ["value 1", "value 2", "value 3", "value 4", "value 5", "value 6"]
         self.scenetree_frame = SceneTreeFrame(self, title="Scene Tree", values=values)
         self.scenetree_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="nsw")

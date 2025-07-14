@@ -27,7 +27,7 @@ class Triangle(Primitive):
         a = np.dot(edge1, h)
         
         if np.abs(a) < 1e-8:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # No intersection case
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #`No intersection case
         
         f = np.divide(1.0, a)
         s = np.subtract(ro, v0)
