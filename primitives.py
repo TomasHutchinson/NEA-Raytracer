@@ -3,12 +3,15 @@ import numpy as np
 
 
 class Primitive:
+    albedo = [1,1,1]
     def __init__(self):
         pass
     def intersect(self, ro : np.ndarray, rd : np.ndarray) -> np.ndarray:
         return np.ndarray(shape= (2,3), buffer = np.array([np.array([0,0,0]), np.array([0,1,0])])) #point, normal
     def uv(self, p : np.ndarray):
         return np.ndarray(shape=(2), buffer=np.zeros(2))
+    def color(self, uv):
+        return np.multiply((uv[0], uv[1], 0), self.albedo)
 
 
 class Triangle(Primitive):
@@ -27,7 +30,7 @@ class Triangle(Primitive):
         a = np.dot(edge1, h)
         
         if np.abs(a) < 1e-8:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #`No intersection case
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]]) #`No intersection case
         
         f = np.divide(1.0, a)
         s = np.subtract(ro, v0)
@@ -44,7 +47,7 @@ class Triangle(Primitive):
         if t > 1e-8:
             intersection_point = np.add(ro, np.multiply(t, rd))
             normal = np.cross(edge1, edge2)
-            normal = np.divide(normal, np.linalg.norm(normal))  # Normalize the normal
+            normal = np.divide(normal, np.linalg.norm(normal))#Normalize the normal
             return np.array([intersection_point, normal])
         
         return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])

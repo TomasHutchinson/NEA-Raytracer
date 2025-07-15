@@ -14,42 +14,48 @@ class mesh:
         if filepath != "":
             self.load(filepath)
 
-    def intersect(self, ro: np.ndarray, rd: np.ndarray) -> np.ndarray:
-        #Transform ray to local space
+    def intersect(self, ro: np.ndarray, rd: np.ndarray) -> tuple: #(hit_point_world: np.ndarray, normal_world: np.ndarray, uv: np.ndarray, color: np.ndarray)
+        # Transform ray to local space
         inv_matrix = np.linalg.inv(self.transform.get_transformation_matrix())
-        
-        #convert ray origin and direction to homogeneous coordinates
+
+        # Convert ray origin and direction to homogeneous coordinates
         ro_h = np.append(ro, 1.0)
-        rd_h = np.append(rd, 0.0)  #Directions use 0 in homogeneous coords
+        rd_h = np.append(rd, 0.0)  # Directions use 0 in homogeneous coords
 
         ro_local = (inv_matrix @ ro_h)[:3]
         rd_local = (inv_matrix @ rd_h)[:3]
 
         if not self._intersects_aabb(ro_local, rd_local):
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #Misses AABB
+            return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0]))  # Misses AABB
 
         intersections = []
         for tri in self.triangles:
             hit = tri.intersect(ro_local, rd_local)
             if hit is not None:
-                intersections.append(hit)
+                hit_point_local, normal_local = hit
+                intersections.append((hit_point_local, normal_local, tri))
 
         if intersections:
-            #Return closest intersection
+            # Return closest intersection
             intersections.sort(key=lambda x: np.linalg.norm(x[0] - ro_local))
-            hit_point_local, normal_local = intersections[0]
+            hit_point_local, normal_local, tri = intersections[0]
 
-            #Transform back to world space
+            # Transform back to world space
             hit_point_world = self.transform.get_transformation_matrix() @ np.append(hit_point_local, 1.0)
             normal_world = self.transform.get_transformation_matrix() @ np.append(normal_local, 0.0)
 
-            #Normalize normal 
+            # Normalize normal 
             normal_world = normal_world[:3]
             normal_world /= np.linalg.norm(normal_world)
 
-            return np.array([hit_point_world[:3], normal_world])
+            # Get UV and color
+            uv = tri.uv(hit_point_local)
+            color = tri.color(uv)
+
+            return (hit_point_world[:3], normal_world, uv, color)
+
         else:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #No triangle hit
+            return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0]))  # No triangle hit
     
     def _intersects_aabb(self, ro: np.ndarray, rd: np.ndarray) -> bool:
         inv_dir = 1.0 / rd

@@ -64,8 +64,22 @@ def pixel(u,v, scene):
 
     ro = np.array([0, 0, 5])
 
-    intersection = scene.objects[0].intersect(ro, rd)
+    closest_hit = np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # Default: no hit
+    hit_object = None
+    min_dist = np.inf
+
+    for obj in scene.objects:
+        hit = obj.intersect(ro, rd)
+        point = hit[0]
+        if not np.allclose(point, [1e10, 1e10, 1e10]):
+            dist = np.linalg.norm(point - ro)
+            if dist < min_dist:
+                min_dist = dist
+                closest_hit = hit
+                hit_object = obj
+
+    intersection = closest_hit
 
     if np.linalg.norm(intersection[0]) < 1000:
-        return np.multiply((1,0,0), np.clip(np.dot(intersection[1], light), 0.0, 1.0))
+        return np.multiply(intersection[3], np.clip(np.dot(intersection[1], light), 0.0, 1.0))
     return (u,v,1)
