@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 import primitives
 from transform import transform as trans
@@ -49,7 +50,7 @@ class mesh:
             normal_world /= np.linalg.norm(normal_world)
 
             # Get UV and color
-            uv = tri.uv(hit_point_local)
+            uv = tri.uv(hit_point_world)
             color = tri.color(uv)
 
             return (hit_point_world[:3], normal_world, uv, color)
@@ -103,8 +104,9 @@ class mesh:
             v0 = np.array(vertices[face[0][0]], dtype=np.float32)
             v1 = np.array(vertices[face[1][0]], dtype=np.float32)
             v2 = np.array(vertices[face[2][0]], dtype=np.float32)
-
-            tris.append(primitives.Triangle((v0, v1, v2)))
+            tri = primitives.Triangle((v0, v1, v2))
+            tri.albedo = [random.uniform(0,1),random.uniform(0,1),random.uniform(0,1)]
+            tris.append(tri)
         
         all_vertices_np = np.array(vertices)
         min_corner = np.min(all_vertices_np, axis=0)

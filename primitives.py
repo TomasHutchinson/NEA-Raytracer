@@ -3,7 +3,7 @@ import numpy as np
 
 
 class Primitive:
-    albedo = [1,1,1]
+    albedo = [1.0,1.0,1.0]
     def __init__(self):
         pass
     def intersect(self, ro : np.ndarray, rd : np.ndarray) -> np.ndarray:
@@ -11,7 +11,7 @@ class Primitive:
     def uv(self, p : np.ndarray):
         return np.ndarray(shape=(2), buffer=np.zeros(2))
     def color(self, uv):
-        return np.multiply((uv[0], uv[1], 0), self.albedo)
+        return self.albedo
 
 
 class Triangle(Primitive):
