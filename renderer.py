@@ -67,5 +67,5 @@ def pixel(u,v, scene):
     intersection = scene.objects[0].intersect(ro, rd)
 
     if np.linalg.norm(intersection[0]) < 1000:
-        return np.multiply((1,0,0), np.dot(intersection[1], light))
+        return np.multiply((1,0,0), np.clip(np.dot(intersection[1], light), 0.0, 1.0))
     return (u,v,1)

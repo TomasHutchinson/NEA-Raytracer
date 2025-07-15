@@ -1,31 +1,55 @@
 import numpy as np
 
 import primitives
+from transform import transform as trans
 
 class mesh:
     triangles = []
     aabb = []
 
+    transform = trans()
+
     def __init__(self, filepath = ""):
+        print("init")
         if filepath != "":
             self.load(filepath)
 
     def intersect(self, ro: np.ndarray, rd: np.ndarray) -> np.ndarray:
-        if not self._intersects_aabb(ro, rd):
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # Misses AABB
+        #Transform ray to local space
+        inv_matrix = np.linalg.inv(self.transform.get_transformation_matrix())
+        
+        #convert ray origin and direction to homogeneous coordinates
+        ro_h = np.append(ro, 1.0)
+        rd_h = np.append(rd, 0.0)  #Directions use 0 in homogeneous coords
+
+        ro_local = (inv_matrix @ ro_h)[:3]
+        rd_local = (inv_matrix @ rd_h)[:3]
+
+        if not self._intersects_aabb(ro_local, rd_local):
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #Misses AABB
 
         intersections = []
         for tri in self.triangles:
-            hit = tri.intersect(ro, rd)
+            hit = tri.intersect(ro_local, rd_local)
             if hit is not None:
                 intersections.append(hit)
 
         if intersections:
-            # Return closest intersection (by t or distance)
-            intersections.sort(key=lambda x: np.linalg.norm(x[0] - ro))
-            return intersections[0]
+            #Return closest intersection
+            intersections.sort(key=lambda x: np.linalg.norm(x[0] - ro_local))
+            hit_point_local, normal_local = intersections[0]
+
+            #Transform back to world space
+            hit_point_world = self.transform.get_transformation_matrix() @ np.append(hit_point_local, 1.0)
+            normal_world = self.transform.get_transformation_matrix() @ np.append(normal_local, 0.0)
+
+            #Normalize normal 
+            normal_world = normal_world[:3]
+            normal_world /= np.linalg.norm(normal_world)
+
+            return np.array([hit_point_world[:3], normal_world])
         else:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # No triangle hit
+            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  #No triangle hit
     
     def _intersects_aabb(self, ro: np.ndarray, rd: np.ndarray) -> bool:
         inv_dir = 1.0 / rd
