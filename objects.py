@@ -50,7 +50,7 @@ class mesh:
             normal_world /= np.linalg.norm(normal_world)
 
             # Get UV and color
-            uv = tri.uv(hit_point_world)
+            uv = tri.uv(hit_point_world[:3])
             color = tri.color(uv)
 
             return (hit_point_world[:3], normal_world, uv, color)
@@ -70,10 +70,11 @@ class mesh:
         t_far = np.min(t2)
 
         return t_far >= t_near and t_far >= 0
-
+    
     def load(self, filepath):
         vertices = []
         normals = []
+        uvs = []
         faces = []
 
         with open(filepath, 'r') as file:
@@ -86,28 +87,47 @@ class mesh:
                     parts = line.strip().split()
                     normal = list(map(float, parts[1:4]))
                     normals.append(normal)
+                elif line.startswith('vt '):  # Vertex texture coordinate (UV)
+                    parts = line.strip().split()
+                    uv = list(map(float, parts[1:3]))  # Only use u, v
+                    uvs.append(uv)
                 elif line.startswith('f '):  # Face
                     face = []
                     parts = line.strip().split()[1:]
                     for part in parts:
-                        vals = part.split('//') if '//' in part else part.split('/')
+                        # Handles v, v/vt, v//vn, v/vt/vn
+                        vals = part.split('/')
                         v_idx = int(vals[0]) - 1
-                        n_idx = int(vals[2]) - 1 if len(vals) > 2 and vals[2] else None
-                        face.append((v_idx, n_idx))
+                        vt_idx = int(vals[1]) - 1 if len(vals) > 1 and vals[1] else None
+                        vn_idx = int(vals[2]) - 1 if len(vals) > 2 and vals[2] else None
+                        face.append((v_idx, vt_idx, vn_idx))
                     faces.append(face)
 
         tris = []
         for face in faces:
             if len(face) != 3:
-                continue  # Skip non-triangular faces or triangulate here if needed
+                continue  # Skip non-triangular faces
 
+            # Vertex positions
             v0 = np.array(vertices[face[0][0]], dtype=np.float32)
             v1 = np.array(vertices[face[1][0]], dtype=np.float32)
             v2 = np.array(vertices[face[2][0]], dtype=np.float32)
+
+            # UV coordinates if present
+            has_uvs = all(f[1] is not None for f in face)
+            if has_uvs:
+                uv0 = np.array(uvs[face[0][1]], dtype=np.float32)
+                uv1 = np.array(uvs[face[1][1]], dtype=np.float32)
+                uv2 = np.array(uvs[face[2][1]], dtype=np.float32)
+                uv_array = np.array([uv0, uv1, uv2])
+            else:
+                uv_array = np.zeros((3, 2), dtype=np.float32)  # fallback default
+
             tri = primitives.Triangle((v0, v1, v2))
-            tri.albedo = [random.uniform(0,1),random.uniform(0,1),random.uniform(0,1)]
+            tri.uvs = uv_array
+            tri.albedo = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
             tris.append(tri)
-        
+
         all_vertices_np = np.array(vertices)
         min_corner = np.min(all_vertices_np, axis=0)
         max_corner = np.max(all_vertices_np, axis=0)
