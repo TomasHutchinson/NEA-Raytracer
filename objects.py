@@ -50,7 +50,7 @@ class mesh:
             normal_world /= np.linalg.norm(normal_world)
 
             # Get UV and color
-            uv = tri.uv(hit_point_world[:3])
+            uv = tri.uv(hit_point_local)
             color = tri.color(uv)
 
             return (hit_point_world[:3], normal_world, uv, color)

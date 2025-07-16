@@ -67,7 +67,7 @@ class Triangle(Primitive):
         # Interpolate UVs using barycentric weights
         uv0, uv1, uv2 = self.uvs[:3]
         interpolated_uv = u * uv0 + v * uv1 + w * uv2
-        interpolated_uv = np.clip(interpolated_uv, 0, 1)
+        interpolated_uv = interpolated_uv % 1.0
         return interpolated_uv
 
     def barycentric_coords(self, p, a, b, c):
@@ -89,5 +89,7 @@ class Triangle(Primitive):
         return u, v, w
     
     def color(self, uv):
+        uv *= 3.0
+        uv = uv % 1.0
         uv = np.clip(uv, 0.0, 0.9999999)
         return self.texture[int(uv[0] * (len(self.texture)-1))][int(uv[1] * (len(self.texture[0]-1)))]

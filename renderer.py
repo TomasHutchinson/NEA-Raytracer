@@ -81,5 +81,5 @@ def pixel(u,v, scene):
     intersection = closest_hit
 
     if np.linalg.norm(intersection[0]) < 1000:
-        return np.multiply(intersection[3], np.clip(np.dot(intersection[1], light), 0.0, 1.0))
+        return np.multiply(intersection[3], np.clip(np.dot(intersection[1], light), 0.5, 1.0))
     return sky.sky.sample(rd)
