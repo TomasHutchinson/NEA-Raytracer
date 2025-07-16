@@ -7,6 +7,7 @@ import primitives
 import console
 import objects
 import scene as scn
+import sky
 
 
 def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
@@ -81,4 +82,4 @@ def pixel(u,v, scene):
 
     if np.linalg.norm(intersection[0]) < 1000:
         return np.multiply(intersection[3], np.clip(np.dot(intersection[1], light), 0.0, 1.0))
-    return (u,v,1)
+    return sky.sky.sample(rd)
