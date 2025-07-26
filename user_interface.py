@@ -98,7 +98,7 @@ class RenderPreview(ctk.CTkLabel):
         new_height = self.winfo_height()
         self.configure(image=ctk.CTkImage(self.image, size=(new_width,new_height)))
     
-    def _render(self):
+    def _render(self): 
         new_width = self.winfo_width()
         new_height = self.winfo_height()
         render_scale = 0.25

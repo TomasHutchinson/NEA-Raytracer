@@ -79,23 +79,23 @@ class mesh:
 
         with open(filepath, 'r') as file:
             for line in file:
-                if line.startswith('v '):  # Vertex position
+                if line.startswith('v '): #Vertex position
                     parts = line.strip().split()
                     vertex = list(map(float, parts[1:4]))
                     vertices.append(vertex)
-                elif line.startswith('vn '):  # Vertex normal
+                elif line.startswith('vn '): #Vertex normal
                     parts = line.strip().split()
                     normal = list(map(float, parts[1:4]))
                     normals.append(normal)
-                elif line.startswith('vt '):  # Vertex texture coordinate (UV)
+                elif line.startswith('vt '): #Vertex texture coordinate (UV)
                     parts = line.strip().split()
-                    uv = list(map(float, parts[1:3]))  # Only use u, v
+                    uv = list(map(float, parts[1:3])) #Only use u, v
                     uvs.append(uv)
-                elif line.startswith('f '):  # Face
+                elif line.startswith('f '): #Face
                     face = []
                     parts = line.strip().split()[1:]
                     for part in parts:
-                        # Handles v, v/vt, v//vn, v/vt/vn
+                        #Handles v, v/vt, v//vn, v/vt/vn
                         vals = part.split('/')
                         v_idx = int(vals[0]) - 1
                         vt_idx = int(vals[1]) - 1 if len(vals) > 1 and vals[1] else None
@@ -106,14 +106,14 @@ class mesh:
         tris = []
         for face in faces:
             if len(face) != 3:
-                continue  # Skip non-triangular faces
+                continue #Skip non-triangular faces
 
-            # Vertex positions
+            #Vertex positions
             v0 = np.array(vertices[face[0][0]], dtype=np.float32)
             v1 = np.array(vertices[face[1][0]], dtype=np.float32)
             v2 = np.array(vertices[face[2][0]], dtype=np.float32)
 
-            # UV coordinates if present
+            #UV coordinates if present
             has_uvs = all(f[1] is not None for f in face)
             if has_uvs:
                 uv0 = np.array(uvs[face[0][1]], dtype=np.float32)
@@ -121,7 +121,7 @@ class mesh:
                 uv2 = np.array(uvs[face[2][1]], dtype=np.float32)
                 uv_array = np.array([uv0, uv1, uv2])
             else:
-                uv_array = np.zeros((3, 2), dtype=np.float32)  # fallback default
+                uv_array = np.zeros((3, 2), dtype=np.float32) #fallback default
 
             tri = primitives.Triangle((v0, v1, v2))
             tri.uvs = uv_array

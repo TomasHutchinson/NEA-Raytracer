@@ -13,40 +13,37 @@ class transform:
         return np.degrees(self.rotation)
 
     def get_transformation_matrix(self):
-        #scale matrix
-        S = np.diag(np.append(self.scale, 1.0))
-
-        #rotation matrices
+        tx, ty, tz = self.position
         rx, ry, rz = self.rotation
-        cos = np.cos
-        sin = np.sin
+        sx, sy, sz = self.scale
 
-        Rx = np.array([
-            [1, 0,       0,      0],
-            [0, cos(rx), -sin(rx), 0],
-            [0, sin(rx), cos(rx),  0],
-            [0, 0,       0,      1]
+        #Precompute sin and cos
+        cx, sx_ = np.cos(rx), np.sin(rx)
+        cy, sy_ = np.cos(ry), np.sin(ry)
+        cz, sz_ = np.cos(rz), np.sin(rz)
+
+        #Build the combined transformation matrix directly
+        return np.array([
+            [
+                sx * (cz * cy),
+                sx * (cz * sy_ * sx_ - sz_ * cx),
+                sx * (cz * sy_ * cx + sz_ * sx_),
+                tx
+            ],
+            [
+                sy * (sz_ * cy),
+                sy * (sz_ * sy_ * sx_ + cz * cx),
+                sy * (sz_ * sy_ * cx - cz * sx_),
+                ty
+            ],
+            [
+                sz * (-sy_),
+                sz * (cy * sx_),
+                sz * (cy * cx),
+                tz
+            ],
+            [0, 0, 0, 1]
         ])
-
-        Ry = np.array([
-            [cos(ry),  0, sin(ry), 0],
-            [0,        1, 0,       0],
-            [-sin(ry), 0, cos(ry), 0],
-            [0,        0, 0,       1]
-        ])
-
-        Rz = np.array([
-            [cos(rz), -sin(rz), 0, 0],
-            [sin(rz), cos(rz),  0, 0],
-            [0,       0,        1, 0],
-            [0,       0,        0, 1]
-        ])
-
-        R = Rz @ Ry @ Rx  #Rotation order: X then Y then Z
-        T = np.eye(4)
-        T[:3, 3] = self.position
-
-        return T @ R @ S
 
     def transform_point(self, point):
         point_h = np.append(point, 1.0)  #Make it 4d
