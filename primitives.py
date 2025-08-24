@@ -3,6 +3,8 @@ import PIL
 import PIL.Image
 # import numba as nb
 
+import material
+
 
 class Primitive:
     albedo = [1.0,1.0,1.0]
@@ -21,8 +23,7 @@ class Triangle(Primitive):
     uvs = np.array([
     [0, 0], [0, 1], [1, 0]])
 
-    textures = []
-    texture = np.divide(np.array(PIL.Image.open("textures/testimg.jpeg"))[...,:3], 255)
+    material = material.Material()
 
     def __init__(self, v=np.array([np.array([0,0,0]), np.array([0,1,0]), np.array([1,1,0])]), uv=np.array([np.array([0,0]), np.array([0,1]), np.array([1,1])])):
         self.vertices = v
@@ -90,6 +91,4 @@ class Triangle(Primitive):
     
     def color(self, uv):
         uv *= 3.0
-        uv = uv % 1.0
-        uv = np.clip(uv, 0.0, 0.9999999)
-        return self.texture[int(uv[0] * (len(self.texture)-1))][int(uv[1] * (len(self.texture[0]-1)))]
+        return self.material.sample(uv)
