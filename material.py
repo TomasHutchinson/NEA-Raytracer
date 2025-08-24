@@ -2,7 +2,7 @@ import numpy as np
 import PIL
 
 class Material:
-    albedo = (1,1,1)
+    albedo = (1,0,1)
     texture = []
 
     def __init__(self):
@@ -14,4 +14,4 @@ class Material:
     def sample(self, uv):
         uv = uv % 1.0
         uv = np.clip(uv, 0.0, 0.9999999)
-        return self.texture[int(uv[0] * (len(self.texture)-1))][int(uv[1] * (len(self.texture[0]-1)))]
+        return np.multiply(self.texture[int(uv[0] * (len(self.texture)-1))][int(uv[1] * (len(self.texture[0]-1)))], self.albedo)
