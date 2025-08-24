@@ -2,7 +2,7 @@ import numpy as np
 import PIL
 
 class Material:
-    albedo = (1,0,1)
+    albedo = (1,1,1)
     texture = []
 
     def __init__(self):
