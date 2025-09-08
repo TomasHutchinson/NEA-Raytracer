@@ -69,16 +69,17 @@ def pixel(u,v, scene):
 
     min_dist = np.inf
 
-    for obj in scene.objects:
-        hit = obj.intersect(ro, rd)
-        point = hit[0]
-        if not np.allclose(point, [1e10, 1e10, 1e10]):
-            dist = np.linalg.norm(point - ro)
-            if dist < min_dist:
-                min_dist = dist
-                closest_hit = hit
+    # for obj in scene.objects:
+    #     hit = obj.intersect(ro, rd)
+    #     point = hit[0]
+    #     if not np.allclose(point, [1e10, 1e10, 1e10]):
+    #         dist = np.linalg.norm(point - ro)
+    #         if dist < min_dist:
+    #             min_dist = dist
+    #             closest_hit = hit
 
-    intersection = closest_hit
+    # intersection = closest_hit
+    intersection = sorted(scene.bvh.trace(ro, rd), key=lambda x:np.linalg.norm(x[0] - ro))[0]
 
     if np.linalg.norm(intersection[0]) < 1000:
         return np.multiply(intersection[3], np.clip(np.dot(intersection[1], light), 0.5, 1.0))

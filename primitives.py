@@ -23,7 +23,7 @@ class Triangle(Primitive):
     uvs = np.array([
     [0, 0], [0, 1], [1, 0]])
 
-    material = material.Material()
+    material = material.testmat
 
     def __init__(self, v=np.array([np.array([0,0,0]), np.array([0,1,0]), np.array([1,1,0])]), uv=np.array([np.array([0,0]), np.array([0,1]), np.array([1,1])])):
         self.vertices = v
@@ -37,38 +37,40 @@ class Triangle(Primitive):
         a = np.dot(edge1, h)
         
         if np.abs(a) < 1e-8:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]]) #`No intersection case
+            return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0])) #`No intersection case
         
         f = np.divide(1.0, a)
         s = np.subtract(ro, v0)
         u = np.multiply(f, np.dot(s, h))
         if u < 0.0 or u > 1.0:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])
+            return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
         
         q = np.cross(s, edge1)
         v = np.multiply(f, np.dot(rd, q))
         if v < 0.0 or np.add(u, v) > 1.0:
-            return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])
+            return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
         
         t = np.multiply(f, np.dot(edge2, q))
         if t > 1e-8:
             intersection_point = np.add(ro, np.multiply(t, rd))
             normal = np.cross(edge1, edge2)
             normal = np.divide(normal, np.linalg.norm(normal))#Normalize the normal
-            return np.array([intersection_point, normal])
+            uv = self.uv(intersection_point)
+            color = self.color(uv)
+            return ([intersection_point, normal, uv, color])
         
-        return np.array([[1e10, 1e10, 1e10], [0, 0, 0]])
+        return (np.array([1e10, 1e10, 1e10]), np.array([0, 0, 0]), np.array([0.0, 0.0]), np.array([0.0, 0.0, 0.0]))
     
     def uv(self, p):
-        # Extract triangle vertices
+        #Extract triangle vertices
         v0, v1, v2 = self.vertices[:3]
-        # Compute barycentric coordinates of the position
+        #Compute barycentric coordinates of the position
         u, v, w = self.barycentric_coords(p, v0, v1, v2)
 
-        # Interpolate UVs using barycentric weights
+        #Interpolate UVs using barycentric weights
         uv0, uv1, uv2 = self.uvs[:3]
         interpolated_uv = u * uv0 + v * uv1 + w * uv2
-        interpolated_uv = interpolated_uv % 1.0
+        # interpolated_uv = interpolated_uv % 1.0
         return interpolated_uv
 
     def barycentric_coords(self, p, a, b, c):
@@ -91,4 +93,4 @@ class Triangle(Primitive):
     
     def color(self, uv):
         uv *= 3.0
-        return self.material.sample(uv)
+        return self.material.sample_color(uv)
