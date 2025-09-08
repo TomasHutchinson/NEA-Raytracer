@@ -2,6 +2,7 @@ from PIL import Image
 import time
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 #custom
 import primitives
@@ -10,6 +11,7 @@ import objects
 import scene as scn
 import sky
 
+_scene = None
 
 def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
     chunk = np.zeros((y_end - y_start, x_end - x_start, 3), dtype=np.uint8)
@@ -22,44 +24,55 @@ def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
             chunk[y - y_start, x - x_start] = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
     return x_start, y_start, chunk
 
+def init_worker():
+    global _scene
+    print("Worker initializing scene...")
+    _scene = scn.scene  # build/load it ONCE per process
+
+def worker(i, j, x_start, x_end, y_start, y_end, resolution):
+    global _scene
+    x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution, _scene)
+    return (i, j, x_start, y_start, chunk)
+
 def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
-    starttime = time.process_time()
+    starttime = time.perf_counter()
 
     print("Start render")
-    scene = scn.scene
     print("Loaded Scene")
 
     x_chunk_size = resolution[0] // num_x_chunks
     y_chunk_size = resolution[1] // num_y_chunks
     image_array = np.zeros((resolution[1], resolution[0], 3), dtype=np.uint8)
 
-    tasks = []
-    with ProcessPoolExecutor() as executor:
-        for i in range(num_x_chunks):
-            x_start = i * x_chunk_size
-            x_end = (i + 1) * x_chunk_size if i < num_x_chunks - 1 else resolution[0]
+    jobs = []
+    for i in range(num_x_chunks):
+        x_start = i * x_chunk_size
+        x_end = (i + 1) * x_chunk_size if i < num_x_chunks - 1 else resolution[0]
+        for j in range(num_y_chunks):
+            y_start = j * y_chunk_size
+            y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
+            jobs.append((i, j, x_start, x_end, y_start, y_end, resolution))
 
-            for j in range(num_y_chunks):
-                y_start = j * y_chunk_size
-                y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
-
-                # Submit each chunk as a separate process
-                tasks.append(
-                    executor.submit(
-                        process_chunk, x_start, x_end, y_start, y_end, resolution, scene
-                    )
-                )
-
-        # Collect results as they complete
-        for future in as_completed(tasks):
-            x_start, y_start, chunk = future.result()
-            console.console.out(f"Placing chunk at ({x_start}, {y_start})")
+    # Start a pool of processes, each runs init_worker() once
+    with ProcessPoolExecutor(
+        max_workers=multiprocessing.cpu_count(),
+        initializer=init_worker
+    ) as executor:
+        futures = [executor.submit(worker, *job) for job in jobs]
+        num_completed_chunks = 0
+        for future in as_completed(futures):
+            i, j, x_start, y_start, chunk = future.result()
+            num_completed_chunks += 1
+            console.console.out(f"Chunk: {i}, {j} | {num_completed_chunks}/{len(jobs)} ({(num_completed_chunks/len(jobs))*100.0}%) | {time.perf_counter() - starttime}")
             image_array[y_start:y_start + chunk.shape[0], x_start:x_start + chunk.shape[1]] = chunk
 
-    print(f"Time Taken: {time.process_time() - starttime}")
+    print(f"Time Taken: {time.perf_counter() - starttime}")
     frame = Image.fromarray(image_array, mode='RGB')
-    print(f"Time Taken + image: {time.process_time() - starttime}")
+    print(f"Time Taken + image: {time.perf_counter() - starttime}")
     return frame
+
+
+
 
 def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarray:
     fov_adjustment = np.tan((fov * np.pi) /180  / 2)
@@ -111,7 +124,7 @@ def pixel(u,v, scene):
             hit_pos, normal, uv, surf_color, roughness = intersection
         else:
             hit_pos, normal, uv, surf_color = intersection
-            roughness = 1.0
+            roughness = 0.0
 
         normal = normalize(normal)
         surf_color = np.array(surf_color, dtype=float)

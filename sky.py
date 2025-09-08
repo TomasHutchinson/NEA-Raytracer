@@ -17,4 +17,4 @@ class Sky():
               (a) / (2 * math.pi)]
         return self.texture[int(uv[0] * (len(self.texture)-1))][int(uv[1] * (len(self.texture[0]-1)))]
 
-sky = Sky("textures/skybox.png")
+sky = Sky("textures/nebula.jpg")
