@@ -7,7 +7,7 @@ class Material:
     texture = []
 
     def __init__(self):
-        self.loadtexture("textures/testimg.jpeg")
+        self.loadtexture("textures/white.png")
 
     def loadtexture(self, path : str):
         self.texture = np.divide(np.array(PIL.Image.open(path))[...,:3], 255)
