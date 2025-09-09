@@ -98,13 +98,24 @@ class RenderPreview(ctk.CTkLabel):
         new_height = self.winfo_height()
         self.configure(image=ctk.CTkImage(self.image, size=(new_width,new_height)))
     
-    def _render(self): 
+    def _render(self):
         new_width = self.winfo_width()
         new_height = self.winfo_height()
         render_scale = 0.25
-        
-        self.image = renderer.render((int(new_width * render_scale), int(new_height * render_scale)))
-        self.configure(image=ctk.CTkImage(self.image, size=(new_width,new_height)))
+        target_size = (int(new_width * render_scale), int(new_height * render_scale))
+
+        def update_frame(generator):
+            try:
+                frame = next(generator)
+                self.image = frame
+                self.configure(image=ctk.CTkImage(self.image, size=(new_width, new_height)))
+                # Schedule next update (don’t block UI)
+                self.after(50, lambda: update_frame(generator))
+            except StopIteration:
+                print("Rendering complete")
+
+        gen = renderer.render_stream(target_size)
+        update_frame(gen)
 
     def _update(self, master, img, **kwargs):
         img.size = (self.winfo_width(), self.winfo_height())

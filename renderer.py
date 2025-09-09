@@ -34,9 +34,8 @@ def worker(i, j, x_start, x_end, y_start, y_end, resolution):
     x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution, _scene)
     return (i, j, x_start, y_start, chunk)
 
-def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
+def render_stream(resolution: tuple, num_x_chunks=4, num_y_chunks=4):
     starttime = time.perf_counter()
-
     print("Start render")
     print("Loaded Scene")
 
@@ -53,7 +52,6 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
             y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
             jobs.append((i, j, x_start, x_end, y_start, y_end, resolution))
 
-    # Start a pool of processes, each runs init_worker() once
     with ProcessPoolExecutor(
         max_workers=multiprocessing.cpu_count(),
         initializer=init_worker
@@ -63,13 +61,15 @@ def render(resolution: tuple, num_x_chunks=4, num_y_chunks=4) -> Image:
         for future in as_completed(futures):
             i, j, x_start, y_start, chunk = future.result()
             num_completed_chunks += 1
-            console.console.out(f"Chunk: {i}, {j} | {num_completed_chunks}/{len(jobs)} ({(num_completed_chunks/len(jobs))*100.0}%) | {time.perf_counter() - starttime}")
+            console.console.out(
+                f"Chunk: {i}, {j} | {num_completed_chunks}/{len(jobs)} "
+                f"({(num_completed_chunks/len(jobs))*100.0:.1f}%) | {time.perf_counter() - starttime:.2f}s"
+            )
+            # Insert the finished chunk into the array
             image_array[y_start:y_start + chunk.shape[0], x_start:x_start + chunk.shape[1]] = chunk
 
-    print(f"Time Taken: {time.perf_counter() - starttime}")
-    frame = Image.fromarray(image_array, mode='RGB')
-    print(f"Time Taken + image: {time.perf_counter() - starttime}")
-    return frame
+            # Yield a partial frame for progressive rendering
+            yield Image.fromarray(image_array.copy(), mode='RGB')
 
 
 
@@ -114,56 +114,74 @@ def pixel(u,v, scene):
 
     for depth in range(max_depth):
         intersections = scene.bvh.trace(ro, rd)
-        if not intersections or len(intersections) == 0:
-            #ray missed geometry
+        if not intersections:
+            # ray missed geometry
             color += throughput * sky.sky.sample(rd)
             break
 
+        # closest hit
         intersection = min(intersections, key=lambda x: np.linalg.norm(x[0] - ro))
         if len(intersection) >= 5:
             hit_pos, normal, uv, surf_color, roughness = intersection
         else:
             hit_pos, normal, uv, surf_color = intersection
-            roughness = 0.0
+            roughness = 0.5
 
         normal = normalize(normal)
         surf_color = np.array(surf_color, dtype=float)
         rd = normalize(rd)
 
+        # sanity check
         if np.linalg.norm(hit_pos) > 1e9:
             color += throughput * sky.sky.sample(rd)
             break
 
-        #lighting
+        # ----------------------------
+        # Direct lighting with shadows
+        # ----------------------------
         light_dir = normalize(light)
-        light_intensity = max(0.0, np.dot(normal, light_dir))
+        shadow_origin = hit_pos + normal * 1e-4  # offset to avoid self-intersection
+        shadow_intersections = scene.bvh.trace(shadow_origin, light_dir)
+        in_shadow = False
+        if shadow_intersections:
+            shadow_hit = min(shadow_intersections, key=lambda x: np.linalg.norm(x[0] - shadow_origin))
+            # If point light, check distance
+            if len(light.shape) == 3:  # directional light
+                in_shadow = True
+            else:
+                light_distance = np.linalg.norm(light - hit_pos)
+                if np.linalg.norm(shadow_hit[0] - shadow_origin) < light_distance:
+                    in_shadow = True
+
+        if not in_shadow:
+            light_intensity = max(0.0, np.dot(normal, light_dir))
+        else:
+            light_intensity = 0.0
+
         direct = surf_color * light_intensity
         color += throughput * direct
 
-        #bounce
+        # ----------------------------
+        # Indirect bounce
+        # ----------------------------
         reflect_dir = normalize(reflect(rd, normal))
-
-        # Probability to sample specular = spec_prob = 1 - roughness
         spec_prob = float(np.clip(1.0 - roughness, 0.0, 1.0))
+
         if np.random.rand() < spec_prob:
-            # Sample glossy/specular lobe around reflection
+            # glossy/specular lobe
             new_dir = sample_phong_lobe(reflect_dir, roughness)
-            # throughput update for specular (assume dielectric: white specular)
-            # specular is not multiplied by surface albedo for dielectrics (approx).
-            throughput *= spec_prob  # scale by sampling mixture weight
+            throughput *= spec_prob
         else:
-            # Diffuse (cosine-weighted)
+            # diffuse hemisphere
             new_dir = cosine_sample_hemisphere(normal)
-            # throughput update for diffuse: multiply by surface color and mixture weight
             throughput *= surf_color * (1.0 - spec_prob)
 
-        # offset origin to avoid self-intersection
+        # offset ray origin to prevent self-intersection
         ro = hit_pos + normal * 1e-4
         rd = normalize(new_dir)
 
-        # tiny safety: if throughput is effectively zero, break
-        if np.all(throughput < 1e-6):
-            break
+        # stop if throughput i
+
     
     return np.clip(color, 0.0, 1.0)
 

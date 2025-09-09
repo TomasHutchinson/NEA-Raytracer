@@ -22,6 +22,7 @@ class Triangle(Primitive):
     vertices = np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0]])
     uvs = np.array([
     [0, 0], [0, 1], [1, 0]])
+    normals = []
 
     material = material.testmat
 
@@ -54,6 +55,9 @@ class Triangle(Primitive):
         if t > 1e-8:
             intersection_point = np.add(ro, np.multiply(t, rd))
             normal = np.cross(edge1, edge2)
+            if len(self.normals) == 3:
+                u, v, w = self.barycentric_coords(intersection_point, v0, v1, v2)
+                normal = self.normals[0] * u + self.normals[1] * v + self.normals[2] * w
             normal = np.divide(normal, np.linalg.norm(normal))#Normalize the normal
             uv = self.uv(intersection_point)
             color = self.color(uv)
