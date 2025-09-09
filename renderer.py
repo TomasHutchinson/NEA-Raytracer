@@ -10,6 +10,7 @@ import console
 import objects
 import scene as scn
 import sky
+import light
 
 _scene = None
 
@@ -125,7 +126,7 @@ def pixel(u,v, scene):
             hit_pos, normal, uv, surf_color, roughness = intersection
         else:
             hit_pos, normal, uv, surf_color = intersection
-            roughness = 0.5
+            roughness = 0.0
 
         normal = normalize(normal)
         surf_color = np.array(surf_color, dtype=float)
@@ -139,27 +140,37 @@ def pixel(u,v, scene):
         # ----------------------------
         # Direct lighting with shadows
         # ----------------------------
-        light_dir = normalize(light)
-        shadow_origin = hit_pos + normal * 1e-4  # offset to avoid self-intersection
-        shadow_intersections = scene.bvh.trace(shadow_origin, light_dir)
-        in_shadow = False
-        if shadow_intersections:
-            shadow_hit = min(shadow_intersections, key=lambda x: np.linalg.norm(x[0] - shadow_origin))
-            # If point light, check distance
-            if len(light.shape) == 3:  # directional light
-                in_shadow = True
-            else:
-                light_distance = np.linalg.norm(light - hit_pos)
-                if np.linalg.norm(shadow_hit[0] - shadow_origin) < light_distance:
+        direct = np.zeros(3, dtype=float)
+        for light in scene.lights:
+            light_dir, light_dist, emission = light.sample(hit_pos, normal)
+
+            shadow_origin = np.add(hit_pos, np.multiply(normal, 1e-4))
+            shadow_hits = scene.bvh.trace(shadow_origin, light_dir)
+
+            in_shadow = False
+            if shadow_hits:
+                shadow_hit = min(shadow_hits, key=lambda x: np.linalg.norm(x[0] - shadow_origin))
+                hit_dist = np.linalg.norm(np.subtract(shadow_hit[0], shadow_origin))
+                if light_dist == np.inf or hit_dist < light_dist:
                     in_shadow = True
 
-        if not in_shadow:
-            light_intensity = max(0.0, np.dot(normal, light_dir))
-        else:
-            light_intensity = 0.0
+            if not in_shadow:
+                # ----- Diffuse (Lambertian) -----
+                cos_term = max(0.0, np.dot(normal, light_dir))
+                diffuse = np.multiply(surf_color, np.multiply(emission, cos_term))
 
-        direct = surf_color * light_intensity
-        color += throughput * direct
+                # ----- Specular (Phong-like) -----
+                if roughness < 1.0:
+                    view_dir = -rd
+                    half_vec = normalize(np.add(light_dir, view_dir))
+                    spec_angle = max(0.0, np.dot(normal, half_vec))
+                    shininess = np.clip((1.0 - roughness) * 128, 1, 128)  # shinier = lower roughness
+                    specular = np.multiply(emission, np.power(spec_angle, shininess))
+                else:
+                    specular = np.zeros(3, dtype=float)
+
+                direct = np.add(direct, np.add(diffuse, specular))
+        color = np.add(color, np.multiply(throughput, direct))
 
         # ----------------------------
         # Indirect bounce
@@ -181,7 +192,6 @@ def pixel(u,v, scene):
         rd = normalize(new_dir)
 
         # stop if throughput i
-
     
     return np.clip(color, 0.0, 1.0)
 
