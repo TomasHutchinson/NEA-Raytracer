@@ -11,9 +11,10 @@ def normalize(v):
     return v / norm
 
 class Light:
-    def __init__(self, color=(1,1,1), intensity=1.0):
+    def __init__(self, color=(1,1,1), intensity=1.0, name="Light"):
         self.color = np.array(color, dtype=float)
         self.intensity = float(intensity)
+        self.name=name
 
 class DirectionalLight(Light):
     def __init__(self, direction, color=(1,1,1), intensity=1.0):

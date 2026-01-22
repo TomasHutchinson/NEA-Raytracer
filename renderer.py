@@ -14,12 +14,11 @@ import light
 
 _scene = None
 
-def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
+def process_chunk(x_start, x_end, y_start, y_end, resolution, scene, samples):
     chunk = np.zeros((y_end - y_start, x_end - x_start, 3), dtype=np.uint8)
     for x in range(x_start, x_end):
         for y in range(y_start, y_end):
             color = [0,0,0]
-            samples = 2
             for i in range(samples):
                 color = color + pixel(x / resolution[0], y / resolution[1], scene) / samples
             chunk[y - y_start, x - x_start] = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
@@ -28,16 +27,21 @@ def process_chunk(x_start, x_end, y_start, y_end, resolution, scene):
 def init_worker():
     global _scene
     print("Worker initializing scene...")
-    _scene = scn.scene  # build/load it ONCE per process
+    if not _scene:
+        _scene = scn.scene  # build/load it ONCE per process
+    else:
+        print("Scene loaded")
 
-def worker(i, j, x_start, x_end, y_start, y_end, resolution):
+def worker(i, j, x_start, x_end, y_start, y_end, resolution, samples):
     global _scene
-    x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution, _scene)
+    x_start, y_start, chunk = process_chunk(x_start, x_end, y_start, y_end, resolution, _scene, samples)
     return (i, j, x_start, y_start, chunk)
 
-def render_stream(resolution: tuple, num_x_chunks=4, num_y_chunks=4):
+def render_stream(resolution: tuple, num_x_chunks=4, num_y_chunks=4, samples=2):
+    global _scene
     starttime = time.perf_counter()
     print("Start render")
+    scn.scene.build_triangles()
     print("Loaded Scene")
 
     x_chunk_size = resolution[0] // num_x_chunks
@@ -51,7 +55,7 @@ def render_stream(resolution: tuple, num_x_chunks=4, num_y_chunks=4):
         for j in range(num_y_chunks):
             y_start = j * y_chunk_size
             y_end = (j + 1) * y_chunk_size if j < num_y_chunks - 1 else resolution[1]
-            jobs.append((i, j, x_start, x_end, y_start, y_end, resolution))
+            jobs.append((i, j, x_start, x_end, y_start, y_end, resolution, samples))
 
     with ProcessPoolExecutor(
         max_workers=multiprocessing.cpu_count(),
@@ -75,15 +79,9 @@ def render_stream(resolution: tuple, num_x_chunks=4, num_y_chunks=4):
 
 
 
-def get_ray_direction(uv: np.array, fov: float, aspect_ratio: float) -> np.ndarray:
-    fov_adjustment = np.tan((fov * np.pi) /180  / 2)
-    x = (2 * uv[0] - 1) * aspect_ratio * fov_adjustment
-    y = (1 - 2 * uv[1]) * fov_adjustment
-    direction = np.array([x, y, -1])
-    return np.divide(direction, np.linalg.norm(direction))
 
 def pixel(u,v, scene):
-    rd = get_ray_direction(np.array([u,v]), 90, 1.77)
+    rd = scene.camera.get_ray_direction(np.array([u,v]), 1.77)
     t = primitives.Triangle(np.ndarray(shape=(3,3),buffer=np.array([
     np.array([-0.5, -0.5, -1]),  # Bottom left
     np.array([0.5, -0.5, -1]),   # Bottom right
@@ -92,7 +90,7 @@ def pixel(u,v, scene):
 
     light = np.array([1,0.5,0.5])
 
-    ro = np.array([0, 0, 5])
+    ro = scene.camera.transform.position
 
     closest_hit = np.array([[1e10, 1e10, 1e10], [0, 0, 0]])  # Default: no hit
 
@@ -111,7 +109,7 @@ def pixel(u,v, scene):
     color = np.array([0.0, 0.0, 0.0])  # accumulated radiance
     throughput = np.array([1.0, 1.0, 1.0])  # energy carried by the ray
     
-    max_depth = 2
+    max_depth = 4
 
     for depth in range(max_depth):
         intersections = scene.bvh.trace(ro, rd)
@@ -129,6 +127,8 @@ def pixel(u,v, scene):
             roughness = 0.0
 
         normal = normalize(normal)
+        if np.dot(normal, rd) > 0:  
+            normal = -normal
         surf_color = np.array(surf_color, dtype=float)
         rd = normalize(rd)
 

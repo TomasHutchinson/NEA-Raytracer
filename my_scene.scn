@@ -1,0 +1,45 @@
+{
+    "objects": [
+        {
+            "mesh_file": "meshes/utahteapot/teapot.obj",
+            "transform": {
+                "position": [
+                    1.0,
+                    1.0,
+                    -1.0
+                ],
+                "rotation": [
+                    100.57,
+                    15.57,
+                    10.57
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "mesh_file": "meshes/utahteapot/teapot.obj",
+            "transform": {
+                "position": [
+                    -3.0,
+                    1.0,
+                    -4.0
+                ],
+                "rotation": [
+                    -100.57,
+                    15.57,
+                    -10.57
+                ],
+                "scale": [
+                    2.0,
+                    2.0,
+                    2.0
+                ]
+            }
+        }
+    ],
+    "lights": []
+}

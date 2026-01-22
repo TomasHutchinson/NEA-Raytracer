@@ -1,4 +1,6 @@
 import numpy as np
+import json
+from primitives import Triangle
 
 class BVH:
     root = None
@@ -54,6 +56,52 @@ class BVH:
             self.build(right_meshes, depth+1, max_leaf_size)
         ]
         return node
+
+    def save_to_file(self, filename):
+        def serialize_node(node):
+            data = {
+                "bounds_min": node.bounds[0].tolist(),
+                "bounds_max": node.bounds[1].tolist()
+            }
+            if node.children:
+                data["children"] = [serialize_node(c) for c in node.children]
+            else:
+                # Leaf node: serialize triangles
+                data["triangles"] = [
+                    {
+                        "vertices": [v.tolist() for v in t.vertices],
+                        "normals": [n.tolist() for n in t.normals],
+                        "uvs": [uv.tolist() for uv in getattr(t, "uvs", [])]
+                    } for t in node.triangles
+                ]
+            return data
+
+        with open(filename, "w") as f:
+            json.dump(serialize_node(self.root), f, indent=4)
+
+    @classmethod
+    def load_from_file(cls, filename):
+        with open(filename, "r") as f:
+            data = json.load(f)
+
+        def deserialize_node(d):
+            node = Node(bounds=(np.array(d["bounds_min"]), np.array(d["bounds_max"])))
+            if "children" in d:
+                node.children = [deserialize_node(c) for c in d["children"]]
+            else:
+                node.triangles = []
+                for tdata in d["triangles"]:
+                    t = Triangle(
+                        vertices=[np.array(v) for v in tdata["vertices"]],
+                        normals=[np.array(n) for n in tdata["normals"]],
+                        uvs=[np.array(uv) for uv in tdata.get("uvs", [])]
+                    )
+                    node.triangles.append(t)
+            return node
+
+        bvh = cls.__new__(cls)
+        bvh.root = deserialize_node(data)
+        return bvh
 
 
 class Node:

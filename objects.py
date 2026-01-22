@@ -6,13 +6,18 @@ from transform import transform as trans
 from material import Material
 
 class mesh:
-    def __init__(self, filepath=""):
+    def __init__(self, filepath="", name=""):
         self.triangles = []
         self.aabb = []
         self.materials = []
         self.transform = trans()
+        self.filename = filepath
+        self.name = name
         if filepath:
             self.load(filepath)
+            if name == "":
+                self.name=os.path.basename(filepath).split('/')[-1].split('.')[0]
+       
 
     def intersect(self, ro: np.ndarray, rd: np.ndarray):
         inv_matrix = np.linalg.inv(self.transform.get_transformation_matrix())
